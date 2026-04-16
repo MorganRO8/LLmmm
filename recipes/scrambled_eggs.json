@@ -1,0 +1,69 @@
+{
+  "recipe_id": "scrambled_eggs_demo",
+  "name": "Soft Scrambled Eggs",
+  "description": "A single hardcoded demo recipe designed to exercise voice guidance, timers, and optional visual checks.",
+  "steps": [
+    {
+      "step_id": "step_1",
+      "title": "Gather tools and ingredients",
+      "instruction": "Place a nonstick pan, spatula, butter, eggs, and a mixing bowl within reach.",
+      "tips": [
+        "Keep the pan dry for now.",
+        "Set the spatula near the stove before you start."
+      ],
+      "visual_check_suggested": false,
+      "default_timer_seconds": null
+    },
+    {
+      "step_id": "step_2",
+      "title": "Crack the eggs",
+      "instruction": "Crack 2 eggs into the mixing bowl.",
+      "tips": [
+        "If shell falls in, remove it before whisking."
+      ],
+      "visual_check_suggested": false,
+      "default_timer_seconds": null
+    },
+    {
+      "step_id": "step_3",
+      "title": "Season and whisk",
+      "instruction": "Add a pinch of salt and whisk until the yolks and whites are fully combined.",
+      "tips": [
+        "Whisk until the mixture looks uniform and slightly foamy."
+      ],
+      "visual_check_suggested": true,
+      "default_timer_seconds": null
+    },
+    {
+      "step_id": "step_4",
+      "title": "Heat the pan",
+      "instruction": "Place the pan over medium-low heat and melt a small pat of butter.",
+      "tips": [
+        "The butter should melt gently, not brown quickly."
+      ],
+      "visual_check_suggested": true,
+      "default_timer_seconds": null
+    },
+    {
+      "step_id": "step_5",
+      "title": "Cook the eggs",
+      "instruction": "Pour in the eggs and stir slowly with the spatula until soft curds form.",
+      "tips": [
+        "Keep the heat low and scrape the bottom of the pan gently."
+      ],
+      "visual_check_suggested": true,
+      "default_timer_seconds": 90
+    },
+    {
+      "step_id": "step_6",
+      "title": "Finish and serve",
+      "instruction": "Remove the pan from heat while the eggs still look slightly glossy, then plate and serve.",
+      "tips": [
+        "Residual heat will continue cooking the eggs for a few seconds."
+      ],
+      "visual_check_suggested": true,
+      "default_timer_seconds": null
+    }
+  ],
+  "branches": []
+}

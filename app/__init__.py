@@ -1,0 +1,1 @@
+"""Cooking assistant foundation package."""
