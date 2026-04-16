@@ -24,6 +24,21 @@ python -m app.main
 pytest -q
 ```
 
+## Enable hand recognition
+Gesture controls rely on mediapipe, and for that a specific model must be downloaded and placed into ./assets/models (it should be named hand_landmarker.task)
+Download here:
+https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/index#models
+
+## Enable TTS
+For local TTS we use Kokoro-82M, to run this on windows you must download and install espeak-ng manually.
+
+To install espeak-ng on Windows:
+
+Go to espeak-ng releases
+Click on Latest release
+Download the appropriate *.msi file (e.g. espeak-ng-20191129-b702b03-x64.msi)
+Run the downloaded installer
+
 ## Run the desktop app
 ```powershell
 python -m app.main_ui
