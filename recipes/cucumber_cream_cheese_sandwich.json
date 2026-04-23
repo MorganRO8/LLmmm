@@ -1,0 +1,30 @@
+{
+  "name": "Cucumber Cream Cheese Sandwich",
+  "description": "A cool, no-cook tea sandwich that is perfect for quick demos.",
+  "steps": [
+    {
+      "title": "Set up the ingredients",
+      "instruction": "Place two slices of bread, cream cheese, cucumber slices, salt, pepper, and any herbs you want on the counter.",
+      "tips": ["Pat cucumber slices dry so the sandwich stays crisp."],
+      "visual_check_suggested": false
+    },
+    {
+      "title": "Spread the cream cheese",
+      "instruction": "Spread a generous layer of cream cheese over one side of each slice of bread.",
+      "tips": ["Go all the way to the edges for full coverage."],
+      "visual_check_suggested": true
+    },
+    {
+      "title": "Add the filling",
+      "instruction": "Arrange cucumber slices in a single layer on one slice, then add a small pinch of salt, pepper, and herbs if using.",
+      "tips": ["Keep the cucumbers in a single layer so the sandwich stays easy to eat."],
+      "visual_check_suggested": true
+    },
+    {
+      "title": "Close and serve",
+      "instruction": "Top with the second slice of bread, press gently, and cut the sandwich in half.",
+      "tips": ["Wipe the cutting board first for a neat demo presentation."],
+      "visual_check_suggested": false
+    }
+  ]
+}

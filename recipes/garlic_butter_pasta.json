@@ -1,0 +1,14 @@
+{
+  "recipe_id": "garlic_butter_pasta_demo",
+  "name": "Garlic Butter Pasta",
+  "description": "A simple pantry pasta recipe that gives the assistant more chances to manage timers and visual checks without being too complex.",
+  "steps": [
+    {"step_id": "gp_step_1", "title": "Set up ingredients", "instruction": "Bring out pasta, butter, garlic, salt, pepper, parmesan, a pot, and a skillet.", "tips": ["Measure everything before the pasta finishes cooking so the sauce comes together quickly."], "visual_check_suggested": false, "default_timer_seconds": null},
+    {"step_id": "gp_step_2", "title": "Boil the water", "instruction": "Fill the pot with water, salt it generously, and bring it to a boil.", "tips": ["The water should taste lightly seasoned, not bland."], "visual_check_suggested": true, "default_timer_seconds": 480},
+    {"step_id": "gp_step_3", "title": "Cook the pasta", "instruction": "Add the pasta and cook until just al dente, stirring occasionally.", "tips": ["Reserve a little pasta water before draining."], "visual_check_suggested": false, "default_timer_seconds": 600},
+    {"step_id": "gp_step_4", "title": "Make the garlic butter base", "instruction": "Melt butter in a skillet over low heat and gently cook the garlic until fragrant.", "tips": ["Do not let the garlic brown deeply or it can become bitter."], "visual_check_suggested": true, "default_timer_seconds": 120},
+    {"step_id": "gp_step_5", "title": "Combine and loosen the sauce", "instruction": "Add the drained pasta to the skillet and toss with the garlic butter, using a splash of pasta water if needed.", "tips": ["A little reserved water helps the butter coat the noodles more evenly."], "visual_check_suggested": true, "default_timer_seconds": null},
+    {"step_id": "gp_step_6", "title": "Finish and plate", "instruction": "Season with pepper, add parmesan, toss again, and serve immediately.", "tips": ["Taste before adding more salt because the pasta water and cheese may already be enough."], "visual_check_suggested": true, "default_timer_seconds": null}
+  ],
+  "branches": []
+}

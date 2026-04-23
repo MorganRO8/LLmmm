@@ -49,6 +49,19 @@ class AppStateStore:
                 "completed_step_ids": list(self._state.recipe_state.completed_step_ids),
             }
 
+    def previous_step(self) -> dict[str, Any]:
+        with self._lock:
+            moved_back = False
+            if self._state.recipe_state.current_step_index > 0:
+                self._state.recipe_state.current_step_index -= 1
+                moved_back = True
+            return {
+                "moved_back": moved_back,
+                "current_step": self.get_current_step().model_dump(),
+                "next_step": self.get_next_step().model_dump() if self.get_next_step() else None,
+                "completed_step_ids": list(self._state.recipe_state.completed_step_ids),
+            }
+
     def repeat_step(self) -> dict[str, Any]:
         with self._lock:
             return {"current_step": self.get_current_step().model_dump()}

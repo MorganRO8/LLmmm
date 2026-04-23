@@ -11,6 +11,8 @@ import time
 from concurrent.futures import Future
 from typing import Any
 
+import json
+
 import cv2
 import numpy as np
 
@@ -22,6 +24,7 @@ from app.core.bus import EventBus
 from app.core.events import TimerExpiredEvent, TimerNotifyEvent, TimerWarningEvent
 from app.core.recipe import RecipeLoader
 from app.core.state import AppStateStore
+from app.gestures.mediapipe_adapter import GestureTuning
 from app.gestures.service import GestureService
 from app.responses.client import ResponsesBackendClient
 from app.realtime.tools import ToolExecutor
@@ -43,7 +46,8 @@ class BackendLoopThread(threading.Thread):
         self.loop.run_forever()
 
     def stop(self) -> None:
-        self.loop.call_soon_threadsafe(self.loop.stop)
+        if self.loop.is_running():
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
     def submit(self, coro) -> Future:  # noqa: ANN001
         return asyncio.run_coroutine_threadsafe(coro, self.loop)
@@ -95,6 +99,8 @@ class DesktopController:
         self._turn_in_flight = False
         self._last_playback_end_ts = 0.0
         self._mic_suppressed_until = 0.0
+        self._tts_interrupt_lock = threading.Lock()
+        self._tts_interrupt_generation = 0
 
         self._gesture_service = GestureService(
             camera_service=self.camera_service,
@@ -103,6 +109,24 @@ class DesktopController:
             cooldown_ms=self.config.gesture_cooldown_ms,
             poll_interval_ms=self.config.gesture_poll_interval_ms,
             on_gesture=self._on_gesture,
+            hand_model_path=self.config.gesture_hand_model_path,
+            face_model_path=self.config.gesture_face_model_path,
+            palm_threshold=self.config.gesture_palm_threshold,
+            mouth_threshold=self.config.gesture_mouth_threshold,
+            thumbs_up_threshold=self.config.gesture_thumbs_up_threshold,
+            pinky_threshold=self.config.gesture_pinky_threshold,
+            fist_threshold=self.config.gesture_fist_threshold,
+            option_threshold=self.config.gesture_option_threshold,
+            tuning=GestureTuning(
+                mouth_box_expand=self.config.gesture_mouth_box_expand,
+                mouth_distance_factor=self.config.gesture_mouth_distance_factor,
+                mouth_min_overlap_ratio=self.config.gesture_mouth_min_overlap_ratio,
+                pinky_min_extension=self.config.gesture_pinky_min_extension,
+                pinky_min_separation=self.config.gesture_pinky_min_separation,
+                fist_max_avg_tip_distance_ratio=self.config.gesture_fist_max_avg_tip_distance_ratio,
+                fist_max_bbox_height_ratio=self.config.gesture_fist_max_bbox_height_ratio,
+                debug_logging=self.config.gesture_debug_logging,
+            ),
         )
 
         self.event_bus.subscribe(TimerWarningEvent, self._on_timer_warning)
@@ -142,6 +166,8 @@ class DesktopController:
         except Exception:
             logger.exception("Failed to stop timer manager cleanly")
         self._backend.stop()
+        if self._backend.is_alive():
+            self._backend.join(timeout=2.0)
 
     def _start_backend(self) -> None:
         self._backend_client = ResponsesBackendClient(
@@ -235,10 +261,17 @@ class DesktopController:
         await self._async_on_assistant_text(text)
         if not self.state_store.state.features.tts_enabled:
             return
+        tts_generation = self._get_tts_interrupt_generation()
         self.state_store.update_realtime_status(assistant_speaking=True)
         for chunk in self._split_tts_chunks(text):
+            if self._is_tts_interrupted(tts_generation):
+                break
             pcm16 = await asyncio.to_thread(self.kokoro.synthesize_pcm16, chunk)
+            if self._is_tts_interrupted(tts_generation):
+                break
             await self._async_on_assistant_audio(pcm16)
+        if self._is_tts_interrupted(tts_generation):
+            self.state_store.update_realtime_status(assistant_speaking=False)
 
     def _split_tts_chunks(self, text: str) -> list[str]:
         text = (text or "").strip()
@@ -250,13 +283,54 @@ class DesktopController:
     def _on_gesture(self, name: str, confidence: float, held_for_ms: int) -> None:
         self.state_store.add_transcript("gesture", name, confidence=confidence, held_for_ms=held_for_ms)
         self._push_ui_event({"type": "gesture", "name": name, "confidence": confidence, "held_for_ms": held_for_ms})
-        self.interrupt("gesture")
+
+        if name == "mouth_cover_toggle_speech":
+            self._toggle_feature_flag("speech_enabled", source_gesture=name)
+            return
+
+        self.interrupt(f"gesture:{name}")
+
+        if name == "raised_palm_interrupt":
+            return
+
+        if name == "thumbs_up_next_step":
+            self._advance_recipe_from_gesture()
+            return
+
+        if name == "pinky_up_previous_step":
+            self._go_back_recipe_from_gesture()
+            return
+
+        if name == "fist_repeat_step":
+            self._repeat_recipe_from_gesture()
+            return
+
+        if name.startswith("option_choice_"):
+            try:
+                option_number = int(name.rsplit("_", 1)[-1])
+            except ValueError:
+                return
+            self._send_gesture_choice(option_number)
 
     def interrupt(self, source: str = "ui") -> None:
+        self._bump_tts_interrupt_generation()
         self.playback.interrupt()
         self.state_store.update_realtime_status(assistant_speaking=False)
         self._last_playback_end_ts = time.monotonic()
         self._push_ui_event({"type": "interrupt", "source": source})
+
+    def _bump_tts_interrupt_generation(self) -> int:
+        with self._tts_interrupt_lock:
+            self._tts_interrupt_generation += 1
+            return self._tts_interrupt_generation
+
+    def _get_tts_interrupt_generation(self) -> int:
+        with self._tts_interrupt_lock:
+            return self._tts_interrupt_generation
+
+    def _is_tts_interrupted(self, generation: int) -> bool:
+        with self._tts_interrupt_lock:
+            return generation != self._tts_interrupt_generation
 
     def suppress_mic_for(self, milliseconds: int) -> None:
         until = time.monotonic() + max(0.0, milliseconds / 1000.0)
@@ -399,6 +473,123 @@ class DesktopController:
             if feature_name == "gesture_enabled":
                 self._gesture_service.set_enabled(enabled)
             self._push_ui_event({"type": "feature_flag", "feature_name": feature_name, "enabled": enabled})
+
+    def _toggle_feature_flag(self, feature_name: str, source_gesture: str | None = None) -> None:
+        if not hasattr(self.state_store.state.features, feature_name):
+            return
+        current_value = bool(getattr(self.state_store.state.features, feature_name))
+        enabled = not current_value
+        setattr(self.state_store.state.features, feature_name, enabled)
+        if feature_name == "gesture_enabled":
+            self._gesture_service.set_enabled(enabled)
+        self._push_ui_event({
+            "type": "feature_flag",
+            "feature_name": feature_name,
+            "enabled": enabled,
+            "source_gesture": source_gesture,
+        })
+        state_word = "enabled" if enabled else "disabled"
+        self._push_ui_event({
+            "type": "status",
+            "message": f"{feature_name.replace('_', ' ').title()} {state_word} via gesture.",
+        })
+
+    def _advance_recipe_from_gesture(self) -> None:
+        if not self._backend_client or self._turn_in_flight:
+            return
+        result = self.state_store.advance_step()
+        current_step = result.get("current_step") or {}
+        next_step = result.get("next_step") or {}
+        title = current_step.get("title") or "the next step"
+        text = (
+            "The user gave a thumbs-up to confirm the current step is complete. "
+            f"The recipe state has already advanced. Guide them through the new current step: {title}. "
+            "Briefly acknowledge the completion and say what to do now."
+        )
+        if next_step:
+            text += f" After that, the following step will be {next_step.get('title', 'next')}."
+        self.state_store.add_transcript("user", text, synthetic=True, gesture_navigation="next_step")
+        self._push_ui_event({"type": "user_text", "text": "[gesture] next step"})
+        self._push_ui_event({"type": "manual_step", "result": result, "source": "gesture"})
+        self._turn_in_flight = True
+        self._backend.submit(self._handle_text_turn(text))
+
+    def _go_back_recipe_from_gesture(self) -> None:
+        if not self._backend_client or self._turn_in_flight:
+            return
+        result = self.state_store.previous_step()
+        current_step = result.get("current_step") or {}
+        title = current_step.get("title") or "the previous step"
+        if result.get("moved_back"):
+            text = (
+                "The user held up a pinky to go back one step. "
+                f"The recipe state has already moved back. Restate the step now in progress: {title}. "
+                "Keep it short and practical."
+            )
+        else:
+            text = (
+                "The user held up a pinky to go back, but the recipe is already at the first step. "
+                f"Repeat the current step: {title}."
+            )
+        self.state_store.add_transcript("user", text, synthetic=True, gesture_navigation="previous_step")
+        self._push_ui_event({"type": "user_text", "text": "[gesture] previous step"})
+        self._push_ui_event({"type": "manual_step", "result": result, "source": "gesture"})
+        self._turn_in_flight = True
+        self._backend.submit(self._handle_text_turn(text))
+
+    def _repeat_recipe_from_gesture(self) -> None:
+        if not self._backend_client or self._turn_in_flight:
+            return
+        result = self.state_store.repeat_step()
+        current_step = result.get("current_step") or {}
+        title = current_step.get("title") or "the current step"
+        text = (
+            "The user made a fist to hear the current step again without changing recipe state. "
+            f"Repeat the current step, which is {title}, in a concise way."
+        )
+        self.state_store.add_transcript("user", text, synthetic=True, gesture_navigation="repeat_step")
+        self._push_ui_event({"type": "user_text", "text": "[gesture] repeat step"})
+        self._push_ui_event({"type": "manual_repeat", "result": result, "source": "gesture"})
+        self._turn_in_flight = True
+        self._backend.submit(self._handle_text_turn(text))
+
+    def _send_gesture_choice(self, option_number: int) -> None:
+        if option_number < 1 or option_number > 3 or not self._backend_client or self._turn_in_flight:
+            return
+
+        frames = self._build_gesture_confirmation_frames()
+        payload = {
+            "gesture_choice": option_number,
+            "requires_visual_confirmation": bool(frames),
+        }
+        text = (
+            f"The user is signaling option {option_number} with their fingers. "
+            f"Confirm from the attached image whether the hand signal looks like choice {option_number}. "
+            "If the gesture looks ambiguous, say so briefly and ask the user to repeat it. "
+            "If it looks correct, continue using that numbered choice.\n"
+            f"gesture_payload={json.dumps(payload)}"
+        )
+        self.state_store.add_transcript("user", text, synthetic=True, gesture_choice=option_number, visual_confirmation_requested=bool(frames))
+        self._push_ui_event({"type": "user_text", "text": f"[gesture] option {option_number}"})
+        self._turn_in_flight = True
+        self._backend.submit(self._handle_text_turn(text, frames=frames))
+
+    def _build_gesture_confirmation_frames(self) -> list[dict[str, Any]]:
+        frame = self.camera_service.get_latest_preview_frame()
+        if frame is None:
+            return []
+        resized = cv2.resize(frame, (self.config.context_frame_width, self.config.context_frame_height), interpolation=cv2.INTER_AREA)
+        ok, encoded = cv2.imencode(".jpg", resized, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+        if not ok:
+            return []
+        return [{
+            "frame_id": f"gesture-preview-{int(time.time() * 1000)}",
+            "timestamp": time.time(),
+            "width": resized.shape[1],
+            "height": resized.shape[0],
+            "jpeg_bytes_base64": base64.b64encode(encoded.tobytes()).decode("ascii"),
+            "motion_score": None,
+        }]
 
     def get_latest_preview_rgb(self) -> np.ndarray | None:
         frame = self.camera_service.get_latest_preview_frame()

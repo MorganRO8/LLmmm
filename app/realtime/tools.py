@@ -48,6 +48,9 @@ class ToolExecutor:
             if tool_name == "repeat_step":
                 return {"ok": True, "result": self._state_store.repeat_step()}
 
+            if tool_name == "previous_step":
+                return {"ok": True, "result": self._state_store.previous_step()}
+
             if tool_name == "start_timer":
                 payload = StartTimerArgs.model_validate(arguments)
                 timer = await self._timer_manager.create_timer(
@@ -124,6 +127,12 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
         "type": "function",
         "name": "repeat_step",
         "description": "Return the current recipe step without changing state.",
+        "parameters": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "type": "function",
+        "name": "previous_step",
+        "description": "Move the recipe back by one step when the user wants to revisit the prior instruction.",
         "parameters": {"type": "object", "properties": {}, "required": []},
     },
     {

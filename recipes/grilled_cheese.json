@@ -1,0 +1,14 @@
+{
+  "recipe_id": "grilled_cheese_demo",
+  "name": "Golden Grilled Cheese",
+  "description": "A fast stovetop sandwich recipe that is ideal for testing timers, scene checks, and gentle step-by-step guidance.",
+  "steps": [
+    {"step_id": "gc_step_1", "title": "Gather the basics", "instruction": "Set out bread, butter, cheese, a pan, and a spatula near the stove.", "tips": ["Choose a cheese that melts easily, like cheddar, havarti, or American."], "visual_check_suggested": false, "default_timer_seconds": null},
+    {"step_id": "gc_step_2", "title": "Butter the bread", "instruction": "Spread a thin layer of butter on one side of each slice of bread.", "tips": ["A thin even layer browns better than thick patches of butter."], "visual_check_suggested": true, "default_timer_seconds": null},
+    {"step_id": "gc_step_3", "title": "Build the sandwich", "instruction": "Place cheese between the slices with the buttered sides facing out.", "tips": ["Keep the cheese away from the edges so it does not spill out too early."], "visual_check_suggested": true, "default_timer_seconds": null},
+    {"step_id": "gc_step_4", "title": "Toast the first side", "instruction": "Cook the sandwich in a pan over medium-low heat until the first side is golden brown.", "tips": ["Press lightly with the spatula for more even browning."], "visual_check_suggested": true, "default_timer_seconds": 180},
+    {"step_id": "gc_step_5", "title": "Flip and finish", "instruction": "Flip the sandwich and cook the other side until golden and the cheese is melted.", "tips": ["Lower the heat if the bread browns before the cheese softens."], "visual_check_suggested": true, "default_timer_seconds": 180},
+    {"step_id": "gc_step_6", "title": "Rest and serve", "instruction": "Let the sandwich rest for a minute, then slice and serve while warm.", "tips": ["Resting briefly helps keep the melted cheese from sliding out immediately."], "visual_check_suggested": false, "default_timer_seconds": 60}
+  ],
+  "branches": []
+}

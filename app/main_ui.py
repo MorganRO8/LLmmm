@@ -5,17 +5,17 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from app.config import AppConfig
-from app.controller import DesktopController
 from app.logging_setup import configure_logging
+from app.ui.startup_window import StartupWindow
+from app.ui.theme import APP_STYLESHEET
 
 
 def main() -> int:
     config = AppConfig()
     configure_logging(config.log_level)
     app = QApplication(sys.argv)
-    controller = DesktopController(config)
-    from app.ui.app_window import AppWindow
-    window = AppWindow(controller)
+    app.setStyleSheet(APP_STYLESHEET)
+    window = StartupWindow(config)
     window.show()
     return app.exec()
 
